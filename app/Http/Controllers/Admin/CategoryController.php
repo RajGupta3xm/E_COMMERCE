@@ -1,123 +1,113 @@
 <?php
 
-// app/Http/Controllers/Admin/CategoryController.php
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\Admin\CategoryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-   public function index()
-{
-    $categories = Category::with(['parent', 'children'])
-        ->withCount('children')
-        ->orderBy('order')
-        ->paginate(20);
-    
-    return view('admin.categories.index', compact('categories'));
-}
+    protected CategoryService $categoryService;
 
-   public function create()
-{
-    $parentCategories = Category::whereNull('parent_id')->get();
-    return view('admin.categories.create', compact('parentCategories'));
-}
+    public function __construct(CategoryService $categoryService)
+    {
+        $this->categoryService = $categoryService;
+    }
 
+    /**
+     * List categories
+     */
+    public function index()
+    {
+        $categories = $this->categoryService->getPaginatedCategories();
+        return view('admin.categories.index', compact('categories'));
+    }
+
+    /**
+     * Show create form
+     */
+    public function create()
+    {
+        $parentCategories = $this->categoryService->getParentCategories();
+        return view('admin.categories.create', compact('parentCategories'));
+    }
+
+    /**
+     * Store category
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id',
-            'order' => 'integer|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'boolean'
-        ]);
+        $validated = $this->validateCategory($request);
 
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('categories', 'public');
-        }
+        $this->categoryService->store($validated);
 
-        // Generate slug
-        $validated['slug'] = Str::slug($request->name);
-
-        Category::create($validated);
-
-        return redirect()->route('admin.categories.index')
+        return redirect()
+            ->route('admin.categories.index')
             ->with('success', 'Category created successfully.');
     }
 
+    /**
+     * Show edit form
+     */
     public function edit(Category $category)
-{
-    $parentCategories = Category::whereNull('parent_id')
-        ->where('id', '!=', $category->id)
-        ->get();
-    
-    return view('admin.categories.edit', compact('category', 'parentCategories'));
-}
+    {
+        $parentCategories = $this->categoryService->getParentCategories($category->id);
 
+        return view('admin.categories.edit', compact('category', 'parentCategories'));
+    }
+
+    /**
+     * Update category
+     */
     public function update(Request $request, Category $category)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id',
-            'order' => 'integer|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'boolean'
-        ]);
+        $validated = $this->validateCategory($request);
 
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            // Delete old image
-            if ($category->image) {
-                Storage::disk('public')->delete($category->image);
-            }
-            $validated['image'] = $request->file('image')->store('categories', 'public');
-        }
+        $this->categoryService->update($category, $validated);
 
-        // Update slug if name changed
-        if ($category->name !== $request->name) {
-            $validated['slug'] = Str::slug($request->name);
-        }
-
-        $category->update($validated);
-
-        return redirect()->route('admin.categories.index')
+        return redirect()
+            ->route('admin.categories.index')
             ->with('success', 'Category updated successfully.');
     }
 
+    /**
+     * Delete category
+     */
     public function destroy(Category $category)
     {
-        // Prevent deletion if has children
-        if ($category->children()->count() > 0) {
-            return redirect()->back()
-                ->with('error', 'Cannot delete category with sub-categories.');
+        try {
+            $this->categoryService->delete($category);
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        // Delete image
-        if ($category->image) {
-            Storage::disk('public')->delete($category->image);
-        }
-
-        $category->delete();
-
-        return redirect()->route('admin.categories.index')
+        return redirect()
+            ->route('admin.categories.index')
             ->with('success', 'Category deleted successfully.');
     }
 
-    // For updating order via AJAX
+    /**
+     * Update category order (AJAX)
+     */
     public function updateOrder(Request $request)
     {
-        foreach ($request->order as $order => $id) {
-            Category::where('id', $id)->update(['order' => $order]);
-        }
-        
+        $this->categoryService->updateOrder($request->order ?? []);
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Validation
+     */
+    private function validateCategory(Request $request): array
+    {
+        return $request->validate([
+            'name'        => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'parent_id'   => 'nullable|exists:categories,id',
+            'order'       => 'nullable|integer|min:0',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'is_active'   => 'nullable|boolean',
+        ]);
     }
 }
