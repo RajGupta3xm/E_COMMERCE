@@ -1,8 +1,14 @@
 {{-- resources/views/admin/partials/sidebar.blade.php --}}
-<aside class="fixed inset-y-0 left-0 z-20 w-64 pt-16 bg-white border-r border-gray-200 lg:flex lg:flex-col lg:pt-0 transition-transform duration-300 ease-in-out transform"
-       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-       x-show="true"
-       @click.away="if (window.innerWidth < 1024) sidebarOpen = false">
+<aside
+ class="fixed inset-y-0 left-0 z-20 w-64 pt-16 bg-white border-r border-gray-200
+        lg:flex lg:flex-col lg:pt-16 transition-transform duration-300 ease-in-out transform"
+ :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+
+
+
+
+
+
     
     <!-- Sidebar Header -->
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 lg:hidden">
@@ -12,7 +18,9 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
+
     </div>
+    
 
     <!-- Navigation -->
     <nav class="flex-1 px-4 pt-6 pb-4 overflow-y-auto">
@@ -42,6 +50,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                     </svg>
                     Categories
+                    <span class="ml-auto px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">  {{ \App\Models\Category::count() }}</span>
                 </a>
             </li>
 

@@ -36,7 +36,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     })->name('dashboard');
     
     // Categories Resource
+    Route::get('/categories/import', [CategoryController::class, 'importForm'])->name('categories.import');
+    Route::post('/categories/import', [CategoryController::class, 'import'])->name('categories.import.store');
+
     Route::resource('categories', CategoryController::class);
+        
+// http://127.0.0.1:8000/admin/categories/import
     
     // For AJAX order update
     Route::post('/categories/update-order', [CategoryController::class, 'updateOrder'])
@@ -44,6 +49,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 });
 
 // Home route (optional)
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 require __DIR__.'/auth.php';

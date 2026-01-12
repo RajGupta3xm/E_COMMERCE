@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Services\Admin\CategoryService;
 use Illuminate\Http\Request;
+use App\Jobs\ImportCategoriesCsvJob;
 
 class CategoryController extends Controller
 {
@@ -45,6 +46,10 @@ class CategoryController extends Controller
         return redirect()
             ->route('admin.categories.index')
             ->with('success', 'Category created successfully.');
+    }
+    public function show(Category $category)
+    {
+        //
     }
 
     /**
@@ -109,5 +114,25 @@ class CategoryController extends Controller
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'is_active'   => 'nullable|boolean',
         ]);
+    }
+    public function importForm()
+    {
+        // dd( 'import form');
+        return view('admin.categories.import');
+    }
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:20480'
+        ]);
+
+        // store file
+        $path = $request->file('file')->store('imports/categories');
+
+        // dispatch job
+        ImportCategoriesCsvJob::dispatch($path);
+        // dd('job dispatched');
+
+        return back()->with('success', 'CSV import started in background.');
     }
 }
