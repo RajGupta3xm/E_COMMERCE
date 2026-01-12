@@ -19,35 +19,54 @@ class CategoryService
     public function getParentCategories($excludeId = null)
     {
         return Category::whereNull('parent_id')
-            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
             ->get();
     }
 
     public function store(array $data)
     {
-        if (isset($data['image'])) {
+        // 1. Duplicate Name Check
+        if (Category::where('name', $data['name'])->exists()) {
+            throw new \Exception("Category '{$data['name']}' pehle se maujood hai.");
+        }
+
+        // 2. Image Handling
+        if (isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
             $data['image'] = $data['image']->store('categories', 'public');
         }
 
-        $data['slug'] = Str::slug($data['name']);
+        // 3. Slug Generation
+        $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
 
         return Category::create($data);
     }
 
     public function update(Category $category, array $data)
     {
-        if (isset($data['image'])) {
+        // 1. Unique Name Check (Apne ID ko chhod kar)
+        if (isset($data['name']) && $data['name'] !== $category->name) {
+            $exists = Category::where('name', $data['name'])
+                ->where('id', '!=', $category->id)
+                ->exists();
+
+            if ($exists) {
+                throw new \Exception("Category name '{$data['name']}' kisi aur category ne use kiya hua hai.");
+            }
+
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+
+        // 2. Image Update Logic
+        if (isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
+            // Purani image delete karein agar exist karti hai
             if ($category->image) {
-                Storage::disk('public')->delete($category->image);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($category->image);
             }
             $data['image'] = $data['image']->store('categories', 'public');
         }
 
-        if ($category->name !== $data['name']) {
-            $data['slug'] = Str::slug($data['name']);
-        }
-
-        return $category->update($data);
+        $category->update($data);
+        return $category;
     }
 
     public function delete(Category $category)

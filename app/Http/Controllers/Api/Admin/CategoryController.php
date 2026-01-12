@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryCollection;
@@ -8,14 +8,25 @@ use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use App\Services\Admin\API\CategoryService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
 class CategoryController extends Controller
 {
-    protected CategoryService $categoryService;
+   protected CategoryService $categoryService;
 
     public function __construct(CategoryService $categoryService)
     {
         $this->categoryService = $categoryService;
+    }
+
+    // Constructor mein middleware likhne ke bajaye ye static function banayein
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('auth:sanctum', except: ['index', 'show', 'tree', 'search']),
+        ];
     }
 
     public function index(Request $request)
@@ -32,6 +43,7 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+       
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -85,14 +97,22 @@ class CategoryController extends Controller
         return CategoryResource::collection($categories);
     }
 
-    public function search(Request $request)
+   public function search(Request $request)
     {
-        $request->validate([
-            'q' => 'required|string'
+        // Service class ka method call ho raha hai
+        $categories = $this->categoryService->searchCategories($request->all());
+
+        return response()->json([
+            'data' => $categories->map(function($cat) {
+                return [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'slug' => $cat->slug,
+                    'is_active' => $cat->is_active,
+                    'image' => $cat->image,
+                    'parent_name' => $cat->parent->name ?? null,
+                ];
+            })
         ]);
-
-        $categories = $this->categoryService->search($request->q);
-
-        return CategoryResource::collection($categories);
     }
 }

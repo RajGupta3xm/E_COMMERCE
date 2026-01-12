@@ -2,28 +2,33 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class CategoryCollection extends ResourceCollection
 {
-    public function toArray($request)
+    public function toArray(Request $request): array
     {
+        // Sirf data return karein, meta Laravel handle kar lega
         return [
             'data' => $this->collection,
+        ];
+    }
+
+    /**
+     * Isse pagination data clean single value mein aayega
+     */
+    public function paginationInformation($request, $paginated, $default)
+    {
+        return [
             'meta' => [
-                'current_page' => $this->currentPage(),
-                'last_page' => $this->lastPage(),
-                'per_page' => $this->perPage(),
-                'total' => $this->total(),
-                'from' => $this->firstItem(),
-                'to' => $this->lastItem(),
+                'total'        => $paginated['total'],
+                'count'        => count($paginated['data']),
+                'per_page'     => $paginated['per_page'],
+                'current_page' => $paginated['current_page'],
+                'total_pages'  => $paginated['last_page'],
             ],
-            'links' => [
-                'first' => $this->url(1),
-                'last' => $this->url($this->lastPage()),
-                'prev' => $this->previousPageUrl(),
-                'next' => $this->nextPageUrl(),
-            ],
+            'links' => $default['links']
         ];
     }
 }

@@ -156,33 +156,33 @@
                         <!-- Filter and Status -->
                         <div class="mt-3 sm:mt-0 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
 
-    <!-- Status Filter -->
-    <select id="statusFilter"
-        class="block w-full sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm
-               focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-    </select>
+                        <!-- Status Filter -->
+                        <select id="statusFilter"
+                            class="block w-full sm:w-40 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm
+                                focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
 
-    <!-- Type Filter -->
-    <select id="typeFilter"
-        class="block w-full sm:w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm
-               focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-        <option value="">All Types</option>
-        <option value="main">Main Categories</option>
-        <option value="sub">Sub Categories</option>
-    </select>
+                        <!-- Type Filter -->
+                        <select id="typeFilter"
+                            class="block w-full sm:w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm
+                                focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">All Types</option>
+                            <option value="main">Main Categories</option>
+                            <option value="sub">Sub Categories</option>
+                        </select>
 
-    <!-- Reset Button -->
-    <button id="resetFilters"
-        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700
-               hover:bg-gray-200 hover:text-gray-900 transition
-               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
-        Reset
-    </button>
+                        <!-- Reset Button -->
+                        <button id="resetFilters"
+                            class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700
+                                hover:bg-gray-200 hover:text-gray-900 transition
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                            Reset
+                        </button>
 
-</div>
+                    </div>
 
 
                     </div>
@@ -192,9 +192,9 @@
                 <ul class="divide-y divide-gray-200">
                     @forelse($categories as $category)
                        <li class="category-row"
-    data-name="{{ strtolower($category->name) }}"
-    data-status="{{ $category->is_active ? 'active' : 'inactive' }}"
-    data-type="{{ $category->parent_id ? 'sub' : 'main' }}">
+                                data-name="{{ strtolower($category->name) }}"
+                                data-status="{{ $category->is_active ? 'active' : 'inactive' }}"
+                                data-type="{{ $category->parent_id ? 'sub' : 'main' }}">
 
                             <div class="px-4 py-4 sm:px-6 hover:bg-gray-50">
                                 <div class="flex items-center justify-between">
@@ -358,7 +358,7 @@
 
                             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                                 <div>
-                                    <p class="text-sm text-gray-700">
+                                    {{-- <p class="text-sm text-gray-700">
                                         Showing
                                         <span class="font-medium">{{ $categories->firstItem() }}</span>
                                         to
@@ -366,10 +366,10 @@
                                         of
                                         <span class="font-medium">{{ $categories->total() }}</span>
                                         results
-                                    </p>
+                                    </p> --}}
                                 </div>
                                 <div>
-                                    {{-- {{ $categories->links() }} --}}
+                                    {{ $categories->links() }}
                                 </div>
                             </div>
                         </div>
@@ -382,54 +382,111 @@
 @endsection
 @push('scripts')
 <script>
-document.getElementById('categorySearch').addEventListener('keyup', function () {
-    let search = this.value.toLowerCase();
-    let rows = document.querySelectorAll('.category-row');
+    const searchInput = document.getElementById('categorySearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const resetBtn = document.getElementById('resetFilters');
+    const categoryList = document.querySelector('.divide-y');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    let debounceTimer;
 
-    rows.forEach(row => {
-        let name = row.querySelector('.category-name').innerText.toLowerCase();
-        row.style.display = name.includes(search) ? '' : 'none';
+    // --- UPDATE 1: URL se data nikal kar filters mein bharna ---
+    function syncFiltersFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('q')) searchInput.value = params.get('q');
+        if (params.has('status')) statusFilter.value = params.get('status');
+        if (params.has('type')) typeFilter.value = params.get('type');
+    }
+
+    // --- UPDATE 2: Filter badalne par URL update karna aur Fetch karna ---
+    function handleFilterChange(page = 1) {
+        const params = new URLSearchParams();
+        if (searchInput.value) params.set('q', searchInput.value);
+        if (statusFilter.value) params.set('status', statusFilter.value);
+        if (typeFilter.value) params.set('type', typeFilter.value);
+        params.set('page', page); // Page number maintain rakhein
+
+        // Browser URL update karein (Taaki select box ki value save rahe)
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.pushState({}, '', newUrl);
+
+        fetchCategories(params.toString());
+    }
+
+    function fetchCategories(queryString = window.location.search.substring(1)) {
+        const apiUrl = `${window.location.origin}/api/v1/categories/search?${queryString}`;
+
+        fetch(apiUrl, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(res => {
+            // Laravel paginate() ka response 'res.data.data' mein hota hai
+            const categories = res.data.data || res.data; 
+            renderCategories(categories);
+            
+            // Yahan aapko pagination links render karne ka function call karna hoga
+            // renderPagination(res.data.links); 
+        });
+    }
+
+    function renderCategories(categories) {
+        categoryList.innerHTML = '';
+        if (!categories || categories.length === 0) {
+            categoryList.innerHTML = `<li class="px-4 py-12 text-center text-gray-500">No results found.</li>`;
+            return;
+        }
+
+        categories.forEach(item => {
+            const editUrl = `/admin/categories/${item.id}/edit`;
+            const deleteUrl = `/admin/categories/${item.id}`;
+            const statusClass = item.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            
+            categoryList.innerHTML += `
+                <li class="category-row">
+                    <div class="px-4 py-4 sm:px-6 hover:bg-gray-50 flex items-center justify-between">
+                        <div class="flex items-center min-w-0 flex-1">
+                            <div class="mr-3"><input type="checkbox" class="h-4 w-4 border-gray-300 rounded"></div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center">
+                                    <p class="text-sm font-medium text-blue-600 truncate"><a href="${editUrl}">${item.name}</a></p>
+                                    <span class="ml-2 px-2 text-xs font-semibold rounded-full ${statusClass}">${item.is_active ? 'Active' : 'Inactive'}</span>
+                                </div>
+                                <p class="text-sm text-gray-500">${item.slug} • ${item.parent_name || 'Main'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 ml-4">
+                            <a href="${editUrl}" class="text-blue-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></a>
+                            <form action="${deleteUrl}" method="POST" class="inline" onsubmit="return confirm('Delete karein?')">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="text-red-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            </form>
+                        </div>
+                    </div>
+                </li>`;
+        });
+    }
+
+    // Event Listeners
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(handleFilterChange, 800);
     });
-});
-
-const searchInput  = document.getElementById('categorySearch');
-const statusFilter = document.getElementById('statusFilter');
-const typeFilter   = document.getElementById('typeFilter');
-const resetBtn     = document.getElementById('resetFilters');
-
-function filterCategories() {
-    let search = searchInput.value.toLowerCase();
-    let status = statusFilter.value;
-    let type   = typeFilter.value;
-
-    document.querySelectorAll('.category-row').forEach(row => {
-        let name    = row.dataset.name;
-        let rStatus = row.dataset.status;
-        let rType   = row.dataset.type;
-
-        let matchName   = name.includes(search);
-        let matchStatus = !status || rStatus === status;
-        let matchType   = !type || rType === type;
-
-        row.style.display = (matchName && matchStatus && matchType) ? '' : 'none';
+    statusFilter.addEventListener('change', () => handleFilterChange(1));
+    typeFilter.addEventListener('change', () => handleFilterChange(1));
+    
+    // Reset fix
+    resetBtn.addEventListener('click', () => {
+        window.location.href = window.location.pathname; 
     });
-}
 
-// events
-searchInput.addEventListener('keyup', filterCategories);
-statusFilter.addEventListener('change', filterCategories);
-typeFilter.addEventListener('change', filterCategories);
-
-// ✅ RESET BUTTON
-resetBtn.addEventListener('click', function () {
-    searchInput.value = '';
-    statusFilter.value = '';
-    typeFilter.value = '';
-
-    filterCategories(); // sab wapas show
-});
-
-
+    // Page load par sync aur fetch
+    window.addEventListener('load', () => {
+        syncFiltersFromUrl();
+        fetchCategories();
+    });
 </script>
 @endpush
 

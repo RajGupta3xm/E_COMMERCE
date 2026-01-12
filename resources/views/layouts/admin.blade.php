@@ -9,7 +9,12 @@
     {{-- ONLY VITE (no CDN, no bootstrap) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
-    
+    <script>
+    window.Laravel = {
+        baseUrl: '{{ url("/") }}',
+        apiUrl: '{{ url("/api") }}'
+    };
+</script>
     
  <script src="https://cdn.tailwindcss.com"></script>
     
