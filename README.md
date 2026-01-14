@@ -43,7 +43,11 @@ The goal is to build a production-level backend system suitable for real-world a
 - Parent & Child category structure.
 - Status control & Image upload support.
 - Advanced Filters & Search functionality.
-
+### ✅ Brand Management
+ - AJAX-Powered CRUD: Seamless brand management without page reloads for a smoother user experience.
+ - Real-time Status Toggle: Interactive and responsive toggle switches for instant "Online/Offline" status updates.
+ - Dynamic Search & Filtering: High-performance debounced search and status-based filtering.
+ - Optimized UI: Clean, responsive list layout with CSS-optimized transitions and brand logo previews.
 ### ✅ Bulk Import System
 - CSV/Large file support.
 - **Chunk Processing:** Bina server crash kiye hazaron records import karein.
