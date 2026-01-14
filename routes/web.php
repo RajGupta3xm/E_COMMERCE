@@ -1,54 +1,64 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\BrandsController;
 use App\Http\Controllers\Admin\CategoryController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-
-// routes/web.php
-
-
+/*
+|--------------------------------------------------------------------------
+| Public & Auth Routes
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return Auth::check() ? redirect()->route('admin.dashboard') : redirect()->route('login');
 });
 
+// Auth scaffolding routes (Login, Register, etc.)
 Auth::routes();
 
-Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    // Dashboard
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
-    
-    // Categories Resource
-    Route::get('/categories/import', [CategoryController::class, 'importForm'])->name('categories.import');
-    Route::post('/categories/import', [CategoryController::class, 'import'])->name('categories.import.store');
+/*
+|--------------------------------------------------------------------------
+| User Profile Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', fn() => view('dashboard'))->middleware('verified')->name('dashboard');
 
-    Route::resource('categories', CategoryController::class);
-        
-// http://127.0.0.1:8000/admin/categories/import
-    
-    // For AJAX order update
-    Route::post('/categories/update-order', [CategoryController::class, 'updateOrder'])
-        ->name('categories.update-order');
+    Route::controller(ProfileController::class)->prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', 'edit')->name('edit');
+        Route::patch('/', 'update')->name('update');
+        Route::delete('/', 'destroy')->name('destroy');
+    });
 });
 
-// Home route (optional)
-// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+/*
+|--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+    
+    // Dashboard
+    Route::get('/dashboard', fn() => view('admin.dashboard'))->name('dashboard');
+
+    // Categories Management
+    Route::controller(CategoryController::class)->prefix('categories')->name('categories.')->group(function () {
+        Route::get('/import', 'importForm')->name('import');
+        Route::post('/import', 'import')->name('import.store');
+        Route::post('/update-order', 'updateOrder')->name('update-order');
+    });
+    Route::resource('categories', CategoryController::class)->except(['show']);
+
+    // Brands Management
+    Route::controller(BrandsController::class)->prefix('brands')->name('brands.')->group(function () {
+        Route::get('/import', 'importForm')->name('import');
+        Route::post('/import', 'import')->name('import.store');
+        Route::post('/toggle-status', 'toggleStatus')->name('toggleStatus'); // Consistent naming
+    });
+    Route::resource('brands', BrandsController::class);
+
+});
 
 require __DIR__.'/auth.php';

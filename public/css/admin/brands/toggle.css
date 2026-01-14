@@ -1,0 +1,6 @@
+/* Purana manual code delete karke sirf ye rakhein agar Tailwind issue kare */
+.status-toggle:checked + div > div {
+    /* translate-x-5 ke barabar manual movement */
+    transform: translateX(1.25rem) !important; 
+    left: 2px !important;
+}

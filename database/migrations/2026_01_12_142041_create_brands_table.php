@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string('logo')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->softDeletes(); // Consistency ke liye, jaise aapne categories mein rakha hai
+            $table->softDeletes(); 
         });
     }
 
